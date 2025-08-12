@@ -1,6 +1,6 @@
 {
   "name": "cognito-jwkset",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Create a set of cryptographic keys and metadata off your cognito user pool.",
   "main": "./dist/cjs/index.js",
   "scripts": {

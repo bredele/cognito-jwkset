@@ -1,12 +1,9 @@
 import {
   createLocalJWKSet,
-  createRemoteJWKSet,
-  JWTPayload,
+  createRemoteJWKSet as createJoseRemoteJWKSet,
   JWTVerifyGetKey,
   RemoteJWKSetOptions,
 } from "jose";
-
-export type JWKSetCallback<T> = (key: JWTVerifyGetKey) => T;
 
 export interface JWKSetOptions extends RemoteJWKSetOptions {
   region?: string;
@@ -23,7 +20,7 @@ const DEFAULT_REMOTE_OPTIONS: RemoteJWKSetOptions = {
 };
 
 /**
- * Creates a remote JWKS from AWS Cognito and calls the provided callback.
+ * Creates a remote JWKS from AWS Cognito.
  *
  * This helper function handles the remote JWKS creation with production-ready defaults
  * optimized for AWS Cognito endpoints. It includes appropriate caching, timeouts, and
@@ -34,12 +31,12 @@ const DEFAULT_REMOTE_OPTIONS: RemoteJWKSetOptions = {
  * while handling AWS Cognito's key rotation patterns.
  */
 
-const createRemoteJWKSetAndCallback = async <T>(
-  callback: JWKSetCallback<T>,
-  options?: JWKSetOptions
-): Promise<T> => {
-  const region = options?.region || process.env.AWS_REGION;
-  const userPoolId = options?.userPoolId || process.env.COGNITO_USER_POOL_ID;
+const createRemoteJWKSet = (options?: JWKSetOptions): JWTVerifyGetKey => {
+  const {
+    region = process.env.AWS_REGION,
+    userPoolId = process.env.COGNITO_USER_POOL_ID,
+    ...userRemoteOptions
+  } = options || {};
 
   if (!region || !userPoolId) {
     throw new Error(
@@ -48,15 +45,13 @@ const createRemoteJWKSetAndCallback = async <T>(
   }
 
   // Merge user options with defaults, excluding region and userPoolId
-  const { region: _, userPoolId: __, ...userRemoteOptions } = options || {};
   const remoteOptions: RemoteJWKSetOptions = {
     ...DEFAULT_REMOTE_OPTIONS,
     ...userRemoteOptions,
   };
 
   const remoteURL = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
-  const remoteJWKSet = createRemoteJWKSet(new URL(remoteURL), remoteOptions);
-  return await callback(remoteJWKSet);
+  return createJoseRemoteJWKSet(new URL(remoteURL), remoteOptions);
 };
 
 /**
@@ -84,19 +79,15 @@ const createRemoteJWKSetAndCallback = async <T>(
  * - Production environments requiring high availability
  */
 
-export default async <T>(
-  callback: JWKSetCallback<T>,
-  options?: JWKSetOptions
-): Promise<T> => {
+export default (options?: JWKSetOptions): JWTVerifyGetKey => {
   if (!process.env.COGNITO_LOCAL_JWKSET) {
-    return createRemoteJWKSetAndCallback(callback, options);
+    return createRemoteJWKSet(options);
   }
 
   try {
     const localJWKS = JSON.parse(process.env.COGNITO_LOCAL_JWKSET);
-    const localJWKSet = createLocalJWKSet(localJWKS);
-    return await callback(localJWKSet);
+    return createLocalJWKSet(localJWKS);
   } catch (error) {
-    return createRemoteJWKSetAndCallback(callback, options);
+    return createRemoteJWKSet(options);
   }
 };

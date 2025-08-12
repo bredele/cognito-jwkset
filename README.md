@@ -13,18 +13,37 @@ npm install cognito-jwkset
 ```ts
 import jwkset from 'cognito-jwkset';
 
-jwkset((keys) => {
-  // do something with keys
+const keys = jwkset();
+// Use keys for JWT verification
+```
+
+### With options
+
+```ts
+import jwkset from 'cognito-jwkset';
+
+const keys = jwkset({
+  region: 'us-east-1',
+  userPoolId: 'us-east-1_xxxxxxxxx'
 });
+```
+
+### JWT Verification Example
+
+```ts
+import jwkset from 'cognito-jwkset';
+import { jwtVerify } from 'jose';
+
+const keys = jwkset();
+const { payload } = await jwtVerify(token, keys);
 ```
 
 ## API
 
-`jwkset<T>(callback, options?)`
+`jwkset(options?): JWTVerifyGetKey`
 
 **Parameters:**
 
-- `callback: (key: JWTVerifyGetKey) => T` - Function that receives the JWK Set key resolver
 - `options?: JWKSetOptions` - Optional configuration object
 
 **Options:**
@@ -36,7 +55,7 @@ jwkset((keys) => {
 - `cacheMaxAge?: number` - Max cache age in ms (default: 3600000)
 - `headers?: Record<string, string>` - Custom HTTP headers
 
-**Returns:** `Promise<T>` - Returns whatever the callback returns
+**Returns:** `JWTVerifyGetKey` - A function that can resolve cryptographic keys for JWT verification
 
 **Environment Variables:**
 
